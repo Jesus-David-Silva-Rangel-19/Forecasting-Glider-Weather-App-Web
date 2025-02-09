@@ -22,6 +22,16 @@ export interface WeatherData {
       icon: string;
     }>;
   }>;
+  location: {
+    name: string;
+    admin1: string;
+    country: string;
+    country_code: string;
+    timezone: string;
+    population?: number;
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export async function fetchWeatherData(
@@ -38,7 +48,7 @@ export async function fetchWeatherData(
       throw new Error('Ciudad no encontrada');
     }
 
-    const { latitude: lat, longitude: lon } = geoData.results[0];
+    const { latitude: lat, longitude: lon, name, admin1, country, country_code, timezone, population } = geoData.results[0];
 
     // Then get weather data from Open-Meteo
     const weatherResponse = await fetch(
@@ -115,7 +125,17 @@ export async function fetchWeatherData(
           description: weatherCodeToDescription[rawData.daily.weather_code[index]]?.description || "clima desconocido",
           icon: weatherCodeToIcon[rawData.daily.weather_code[index]] || "01d"
         }]
-      }))
+      })),
+      location: {
+        name,
+        admin1,
+        country,
+        country_code,
+        timezone,
+        population,
+        latitude: lat,
+        longitude: lon
+      }
     };
   } catch (error) {
     console.error('Error al obtener datos del clima:', error);

@@ -3,14 +3,16 @@ import { useEffect, useState } from 'react';
 import { WeatherData, fetchWeatherData } from '@/services/weatherService';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Wind, Droplets, MapPin } from 'lucide-react';
+import { Search, Wind, Droplets, MapPin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export const WeatherDisplay = () => {
   const [city, setCity] = useState('Tamalameque');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const fetchWeather = async (searchCity = city) => {
     setLoading(true);
@@ -29,6 +31,16 @@ export const WeatherDisplay = () => {
   useEffect(() => {
     fetchWeather();
   }, []);
+
+  useEffect(() => {
+    if (weatherData?.location.timezone) {
+      const updateTime = () => {
+        setCurrentTime(new Date());
+      };
+      const timer = setInterval(updateTime, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [weatherData?.location.timezone]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,11 +79,26 @@ export const WeatherDisplay = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-gray-600" />
-                    <h2 className="font-labrada text-2xl font-semibold">{city}</h2>
+                    <h2 className="font-labrada text-2xl font-semibold">
+                      {weatherData.location.name}
+                    </h2>
                   </div>
                   <p className="text-gray-600 mt-1">
-                    {format(new Date(), 'EEEE, d \'de\' MMMM')}
+                    {weatherData.location.admin1}, {weatherData.location.country}
                   </p>
+                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                    <Clock className="h-4 w-4" />
+                    {currentTime.toLocaleTimeString('es-ES', {
+                      timeZone: weatherData.location.timezone,
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                  {weatherData.location.population && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Población: {weatherData.location.population.toLocaleString()} habitantes
+                    </p>
+                  )}
                 </div>
                 <img
                   src={`https://openweathermap.org/img/wn/${weatherData.current.weather[0].icon}@2x.png`}
@@ -115,7 +142,7 @@ export const WeatherDisplay = () => {
                         className="w-10 h-10"
                       />
                       <span className="font-medium">
-                        {format(new Date(day.dt * 1000), 'EEEE')}
+                        {format(new Date(day.dt * 1000), 'EEEE', { locale: es })}
                       </span>
                     </div>
                     <div className="flex gap-4">
