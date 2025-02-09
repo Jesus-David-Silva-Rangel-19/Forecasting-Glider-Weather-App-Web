@@ -1,53 +1,39 @@
 
 import { useEffect, useState } from 'react';
 import { WeatherData, fetchWeatherData } from '@/services/weatherService';
-import { ApiKeyForm } from './ApiKeyForm';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Wind, Droplets, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const WeatherDisplay = () => {
-  const [apiKey, setApiKey] = useState('');
   const [city, setCity] = useState('Tamalameque');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const fetchWeather = async (searchCity = city) => {
-    if (!apiKey) return;
-    
     setLoading(true);
     setError('');
     try {
-      const data = await fetchWeatherData(searchCity, apiKey);
+      const data = await fetchWeatherData(searchCity);
       setWeatherData(data);
       setCity(searchCity);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch weather data');
+      setError(err instanceof Error ? err.message : 'Error al obtener datos del clima');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (apiKey) {
-      fetchWeather();
-    }
-  }, [apiKey]);
+    fetchWeather();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchWeather();
   };
-
-  if (!apiKey) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-blue-100">
-        <ApiKeyForm onApiKeySubmit={setApiKey} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-blue-50 to-blue-100">
@@ -57,7 +43,7 @@ export const WeatherDisplay = () => {
           <Input
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            placeholder="Enter city name"
+            placeholder="Ingresa el nombre de la ciudad"
             className="flex-1"
           />
           <Button type="submit">
@@ -72,7 +58,7 @@ export const WeatherDisplay = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-12">Loading...</div>
+          <div className="text-center py-12">Cargando...</div>
         ) : weatherData && (
           <div className="grid gap-6 md:grid-cols-2">
             {/* Current Weather */}
@@ -84,7 +70,7 @@ export const WeatherDisplay = () => {
                     <h2 className="font-labrada text-2xl font-semibold">{city}</h2>
                   </div>
                   <p className="text-gray-600 mt-1">
-                    {format(new Date(), 'EEEE, MMMM do')}
+                    {format(new Date(), 'EEEE, d \'de\' MMMM')}
                   </p>
                 </div>
                 <img
@@ -115,7 +101,7 @@ export const WeatherDisplay = () => {
 
             {/* 5-Day Forecast */}
             <div className="p-6 backdrop-blur-lg bg-white/30 rounded-lg shadow-lg">
-              <h3 className="font-labrada text-xl font-semibold mb-4">5-Day Forecast</h3>
+              <h3 className="font-labrada text-xl font-semibold mb-4">Pronóstico de 5 días</h3>
               <div className="space-y-4">
                 {weatherData.daily.slice(1, 6).map((day) => (
                   <div
