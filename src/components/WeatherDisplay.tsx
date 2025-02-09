@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { WeatherData, fetchWeatherData } from '@/services/weatherService';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ export const WeatherDisplay = () => {
   const [city, setCity] = useState('Tamalameque');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [open, setOpen] = useState(false);
@@ -24,13 +23,8 @@ export const WeatherDisplay = () => {
     country: string;
   }>>([]);
 
-  const searchCities = useCallback(async (query: string) => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    setSearchLoading(true);
+  const searchCities = async (query: string) => {
+    if (!query) return;
     try {
       const response = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=es&format=json`
@@ -42,23 +36,13 @@ export const WeatherDisplay = () => {
           admin1: result.admin1,
           country: result.country,
         })));
-      } else {
-        setSearchResults([]);
       }
     } catch (err) {
       console.error('Error searching cities:', err);
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
     }
-  }, []);
+  };
 
-  const debouncedSearch = useCallback(
-    debounce((query: string) => {
-      searchCities(query);
-    }, 500),
-    [searchCities]
-  );
+  const debouncedSearch = debounce(searchCities, 300);
 
   const fetchWeather = async (searchCity = city) => {
     setLoading(true);
@@ -90,7 +74,6 @@ export const WeatherDisplay = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setOpen(false);
     fetchWeather();
   };
 
@@ -115,17 +98,8 @@ export const WeatherDisplay = () => {
               </PopoverTrigger>
               <PopoverContent className="p-0" align="start">
                 <Command>
-                  <CommandInput 
-                    placeholder="Buscar ciudad..."
-                    value={city}
-                    onValueChange={(value) => {
-                      setCity(value);
-                      debouncedSearch(value);
-                    }}
-                  />
-                  <CommandEmpty>
-                    {searchLoading ? 'Buscando...' : 'No se encontraron resultados.'}
-                  </CommandEmpty>
+                  <CommandInput placeholder="Buscar ciudad..." />
+                  <CommandEmpty>No se encontraron resultados.</CommandEmpty>
                   <CommandGroup>
                     {searchResults.map((result, index) => (
                       <CommandItem
@@ -145,7 +119,7 @@ export const WeatherDisplay = () => {
               </PopoverContent>
             </Popover>
           </div>
-          <Button type="submit" disabled={loading}>
+          <Button type="submit">
             <Search className="h-4 w-4" />
           </Button>
         </form>
