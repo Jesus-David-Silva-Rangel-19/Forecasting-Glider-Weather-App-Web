@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Search, Wind, Droplets, MapPin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import debounce from 'lodash/debounce';
 
 export const WeatherDisplay = () => {
   const [city, setCity] = useState('Tamalameque');
@@ -13,6 +16,33 @@ export const WeatherDisplay = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [open, setOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<Array<{
+    name: string;
+    admin1: string;
+    country: string;
+  }>>([]);
+
+  const searchCities = async (query: string) => {
+    if (!query) return;
+    try {
+      const response = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=es&format=json`
+      );
+      const data = await response.json();
+      if (data.results) {
+        setSearchResults(data.results.map((result: any) => ({
+          name: result.name,
+          admin1: result.admin1,
+          country: result.country,
+        })));
+      }
+    } catch (err) {
+      console.error('Error searching cities:', err);
+    }
+  };
+
+  const debouncedSearch = debounce(searchCities, 300);
 
   const fetchWeather = async (searchCity = city) => {
     setLoading(true);
@@ -50,14 +80,45 @@ export const WeatherDisplay = () => {
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-to-br from-blue-50 to-blue-100">
       <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
-        {/* Search Bar */}
+        {/* Intelligent Search */}
         <form onSubmit={handleSearch} className="flex gap-2">
-          <Input
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Ingresa el nombre de la ciudad"
-            className="flex-1"
-          />
+          <div className="flex-1">
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Input
+                  value={city}
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    debouncedSearch(e.target.value);
+                  }}
+                  onClick={() => setOpen(true)}
+                  placeholder="Ingresa el nombre de la ciudad"
+                  className="w-full"
+                />
+              </PopoverTrigger>
+              <PopoverContent className="p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar ciudad..." />
+                  <CommandEmpty>No se encontraron resultados.</CommandEmpty>
+                  <CommandGroup>
+                    {searchResults.map((result, index) => (
+                      <CommandItem
+                        key={index}
+                        onSelect={() => {
+                          setCity(result.name);
+                          setOpen(false);
+                          fetchWeather(result.name);
+                        }}
+                      >
+                        <MapPin className="mr-2 h-4 w-4" />
+                        {result.name}, {result.admin1}, {result.country}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
           <Button type="submit">
             <Search className="h-4 w-4" />
           </Button>
@@ -126,8 +187,20 @@ export const WeatherDisplay = () => {
               </div>
             </div>
 
-            {/* 5-Day Forecast */}
+            {/* Weather Map */}
             <div className="p-6 backdrop-blur-lg bg-white/30 rounded-lg shadow-lg">
+              <h3 className="font-labrada text-xl font-semibold mb-4">Mapa Meteorológico</h3>
+              <div className="relative w-full h-[300px] rounded-lg overflow-hidden">
+                <iframe
+                  className="absolute inset-0 w-full h-full border-0"
+                  src={`https://www.rainviewer.com/map.html?loc=${weatherData.location.latitude},${weatherData.location.longitude},8&oFa=0&oC=1&oU=0&oCS=1&oF=0&oAP=1&c=1&o=83&lm=1&th=0&sm=1&sn=1`}
+                  allowFullScreen
+                />
+              </div>
+            </div>
+
+            {/* 5-Day Forecast */}
+            <div className="md:col-span-2 p-6 backdrop-blur-lg bg-white/30 rounded-lg shadow-lg">
               <h3 className="font-labrada text-xl font-semibold mb-4">Pronóstico de 5 días</h3>
               <div className="space-y-4">
                 {weatherData.daily.slice(1, 6).map((day) => (
